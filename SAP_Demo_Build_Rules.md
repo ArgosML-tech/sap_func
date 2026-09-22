@@ -66,14 +66,22 @@ numeración no segura ante concurrencia al renunciar al rango numérico.
 
 ## 3. Hechos del sistema: prohibido inventarlos
 
-Toda afirmación del documento sobre el sistema destino pertenece a una de
-estas tres categorías, y debe tratarse distinto según cuál sea:
+Toda afirmación del documento pertenece a una de estas cuatro categorías,
+y debe tratarse distinto según cuál sea:
 
 | Categoría | Qué es | Dónde va |
 |---|---|---|
+| **Modelo estándar de SAP** | Nombres y estructura de tablas, campos y relaciones del estándar, y transacciones estándar. `VBAK`/`VBAP` son cabecera y posición de pedido; `LIKP`/`LIPS`, de entrega; `VBRK`/`VBRP`, de factura | Se puede afirmar y usar con normalidad. **No es un hecho a verificar** |
 | **Decisión de diseño** | Algo que la especificación elige y por tanto posee | Business Rules, Functional Requirements, diseño técnico |
-| **Hecho verificado** | Dato del sistema aportado por el usuario o confirmado en las fuentes | Puede sustentar una regla; se cita como verificado |
-| **Hecho no verificado** | Cualquier otra afirmación sobre datos, contenido de campos, semántica de tablas o comportamiento dependiente del entorno | **Assumptions (§17) u Open Items (§19). Nunca Business Rules** |
+| **Hecho verificado** | Dato de este sistema aportado por el usuario o confirmado en las fuentes | Puede sustentar una regla; se cita como verificado |
+| **Hecho no verificado** | El **contenido y el estado** de este sistema: si un campo está poblado, qué valores tiene, cómo se comporta el entorno o qué está configurado | **Assumptions (§17) u Open Items (§19). Nunca Business Rules** |
+
+**El límite entre las dos últimas**: que `LIKP` sea la cabecera de entrega
+y tenga un campo `KOSTK` es modelo estándar, y se afirma sin más. Que
+`KOSTK` venga poblado en este sistema es contenido, y hay que verificarlo.
+Confundirlas en un sentido produce reglas falsas; confundirlas en el otro
+produce un documento inútil, lleno de pendientes triviales sobre tablas que
+cualquier desarrollador conoce.
 
 **La regla dura**: si una regla de negocio necesita un hecho que no está
 verificado, la regla no se escribe como decidida. Se escribe la parte
@@ -93,8 +101,17 @@ bien redactada, y que se descubre falsa al implementar.
   Items.
 - La misma especificación permitió atravesar categorías de documento no
   soportadas "cuando permitan alcanzar otro nodo soportado". En los datos
-  reales, uno de esos nodos estaba compartido por cadenas de pedidos
-  distintos, de modo que la reconstrucción arrastraba documentos ajenos.
+  reales, uno de esos nodos aparecía compartido por cadenas distintas, de
+  modo que la reconstrucción arrastraba documentos ajenos.
+- Una segunda versión de esa especificación convirtió el nodo compartido en
+  funcionalidad: decidió atravesarlo a propósito para "descubrir documentos
+  relacionados". El dato no lo sostenía: ese nodo no era una entidad
+  compartida, sino un registro por documento cuyo número era la **fecha** de
+  creación, de modo que todos los del mismo día colisionaban en el mismo
+  número. Atravesarlo no mostraba documentos relacionados, sino todo lo
+  procesado ese día — hasta diecisiete cadenas ajenas en un caso real. La
+  lección: antes de construir una regla sobre una clave, comprobar que esa
+  clave identifica una entidad de negocio y no un artefacto de numeración.
 
 ---
 
@@ -110,6 +127,11 @@ de dependencias— debe declarar de forma cerrada:
 - Si un nodo puede estar compartido por varias cadenas, no puede usarse
   para pasar de una a otra. Un nodo compartido es hoja del objeto al que
   pertenece.
+- Antes de tratar un nodo como compartido, comprobar **qué identifica su
+  clave**. Si la clave no es un identificador de negocio —una fecha, un
+  correlativo técnico, un valor derivado— los nodos que la comparten no
+  están relacionados entre sí, y la clave lógica debe ampliarse con lo que
+  sí los distingue (el documento padre y la posición, normalmente).
 
 La deduplicación de nodos visitados **no** resuelve esto: evita repetir un
 nodo, no evita que ese nodo conecte cadenas que deberían estar separadas.
@@ -208,8 +230,9 @@ Repasar, y corregir lo que falle:
 4. ¿Algún mensaje del catálogo corresponde a un evento interno?
 5. ¿Alguna regla ofrece alternativas por release o entorno?
 6. ¿Promete el alcance algo que la técnica elegida no da?
-7. ¿Hay algún recorrido sobre relaciones que pueda atravesar un nodo
-   compartido?
+7. ¿Hay algún recorrido que pueda atravesar un nodo compartido? ¿La clave
+   de cada nodo identifica una entidad de negocio, y no una fecha o un
+   artefacto de numeración?
 8. ¿Se ordena antes de truncar?
 9. ¿Algún nombre supera su límite de caracteres?
 10. ¿Hay identificadores de documento inventados en los casos de prueba?
